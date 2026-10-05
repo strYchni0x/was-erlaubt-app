@@ -107,13 +107,19 @@ private fun InfoArea(state: UiState, showDebug: Boolean, modifier: Modifier) {
     }
 }
 
-private fun statusText(s: UiState): String? = when {
-    s.gps == GpsState.SEARCHING -> "GPS wird gesucht …"
-    s.gps == GpsState.LOST -> "GPS-Signal verloren – letzter Wert"
-    s.loadingData && s.limit == null -> "Straßendaten werden geladen …"
-    s.dataError != null && s.limit == null -> "Keine Verbindung zum Kartendienst"
-    s.noRoad -> "Keine Straße erkannt"
-    else -> null
+private fun statusText(s: UiState): String? {
+    val gps = when (s.gps) {
+        GpsState.SEARCHING -> "GPS wird gesucht …"
+        GpsState.LOST -> "GPS-Signal verloren – letzter Wert"
+        GpsState.OK -> null
+    }
+    val data = when {
+        s.loadingData && s.limit == null -> "Straßendaten werden geladen …"
+        s.dataError != null && s.limit == null -> "Keine Verbindung zum Kartendienst"
+        s.noRoad -> "Keine Straße erkannt"
+        else -> null
+    }
+    return listOfNotNull(gps, data).joinToString("\n").ifEmpty { null }
 }
 
 @Composable

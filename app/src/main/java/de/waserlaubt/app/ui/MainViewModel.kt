@@ -7,6 +7,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import de.waserlaubt.app.data.OverpassClient
@@ -79,6 +80,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Grobe Netzwerkposition: nur zum frühen Vorladen der Straßendaten. */
     private val networkListener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
+            Log.i(TAG, "Netzwerkposition ±${location.accuracy.toInt()} m → Kacheln vorladen")
             tiles.ensureAround(LatLon(location.latitude, location.longitude), null)
         }
         override fun onProviderEnabled(provider: String) {}
@@ -96,9 +98,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
             lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 10_000L, 50f, networkListener, Looper.getMainLooper())
         }
-        lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let {
-            tiles.ensureAround(LatLon(it.latitude, it.longitude), null)
-        }
+        // Letzte bekannte Position (GPS oder Netz) → Straßendaten schon vor dem ersten GPS-Fix laden
+        listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+            .firstNotNullOfOrNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
+            ?.let { tiles.ensureAround(LatLon(it.latitude, it.longitude), null) }
         watchdog?.cancel()
         watchdog = viewModelScope.launch {
             while (isActive) {
@@ -175,6 +178,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     companion object {
+        private const val TAG = "MainViewModel"
         private const val GPS_LOST_MS = 8_000L
         private const val MAX_ACCURACY_M = 40f
     }

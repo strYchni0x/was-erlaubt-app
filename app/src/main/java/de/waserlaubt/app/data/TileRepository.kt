@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import android.util.Log
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
@@ -89,10 +90,12 @@ class TileRepository(
                     val raw = client.fetchRaw(s, w, n, e)
                     val ways = OverpassClient.parse(raw)
                     cacheFile(key).writeText(raw)
+                    Log.i(TAG, "Kachel $key geladen: ${ways.size} Straßen")
                     tiles[key] = ways
                     failedAt.remove(key)
                     _status.value = _status.value.copy(error = null)
                 } catch (e: Exception) {
+                    Log.w(TAG, "Kachel $key fehlgeschlagen", e)
                     failedAt[key] = System.currentTimeMillis()
                     // Notfalls veraltete Daten nehmen
                     readCache(key, maxAgeMs = Long.MAX_VALUE)?.let { tiles[key] = it }
@@ -129,6 +132,7 @@ class TileRepository(
     ).map { "%.5f".format(java.util.Locale.ROOT, it).toDouble() }
 
     companion object {
+        private const val TAG = "TileRepository"
         private const val DIR = "tiles"
         private const val TILE_LAT = 0.02
         private const val TILE_LON = 0.03
