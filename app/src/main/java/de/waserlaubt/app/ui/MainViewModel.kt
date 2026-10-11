@@ -14,6 +14,7 @@ import de.waserlaubt.app.data.OverpassClient
 import de.waserlaubt.app.data.TileRepository
 import de.waserlaubt.app.matching.Fix
 import de.waserlaubt.app.matching.RoadMatcher
+import de.waserlaubt.app.offline.OfflineStore
 import de.waserlaubt.app.osm.BuiltUp
 import de.waserlaubt.app.osm.LatLon
 import de.waserlaubt.app.osm.MaxspeedResolver
@@ -46,10 +47,12 @@ data class UiState(
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val locationManager = app.getSystemService(LocationManager::class.java)
+    val offline = OfflineStore(app, viewModelScope)
     private val tiles = TileRepository(
         OverpassClient("WasErlaubt/${app.packageManager.getPackageInfo(app.packageName, 0).versionName} (Android)"),
         app.cacheDir,
         viewModelScope,
+        offline,
     )
     private val matcher = RoadMatcher()
     private val processMutex = Mutex()

@@ -15,6 +15,24 @@ Datenquelle: OpenStreetMap (Overpass-API). Kein Konto, kein Tracking, keine Werb
    (innerorts 50 / außerorts 100 / Kraftfahrstraße mit getrennten Fahrbahnen ohne Limit;
    „innerorts“ = mind. 3 Wohnstraßen im Umkreis von 150 m)
 
+## Offline-Pakete
+
+In den Optionen (Zahnrad oben rechts) lassen sich Straßendaten je Bundesland oder für ganz
+Deutschland herunterladen (System-Downloadmanager, optional nur über WLAN). Mit Paket kommen
+Kacheln ohne Netz; an Paketgrenzen wird online ergänzt, ohne Paket wie bisher Overpass.
+
+Pakete bauen (Python mit `pip install osmium shapely`):
+
+```
+python tools/build_all.py D:/build/waserlaubt-data            # alle 16 Bundesländer
+python tools/build_all.py D:/build/waserlaubt-data bremen     # einzelne
+```
+
+`out/` enthält danach `<bundesland>.wepk` und `index.json` zum Hochladen. Die App lädt von
+`PACKAGE_BASE_URL` (siehe `app/build.gradle.kts`); im Debug-Build `http://127.0.0.1:8765/`,
+zum Testen: `python -m http.server 8765 --directory out` und `adb reverse tcp:8765 tcp:8765`.
+Größe: Niedersachsen 21,8 MB, Deutschland etwa 200 MB.
+
 ## Bedienung
 
 - **Lange drücken** auf den Bildschirm: Debug-Infos (Way-ID, Richtung, Abstand, Tags)
@@ -32,4 +50,4 @@ Build-Ausgabe liegt unter `D:/build/waserlaubt/` (siehe `settings.gradle.kts`).
 ## Nächste Schritte
 
 - Testfahrten mit Debug-Overlay, Matching-Parameter justieren
-- Offline-Datenpaket aus Geofabrik-Extrakt statt Overpass
+- Hosting der Offline-Pakete + regelmäßige Aktualisierung

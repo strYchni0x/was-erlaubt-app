@@ -21,6 +21,7 @@ import de.waserlaubt.app.ui.Disclaimer
 import de.waserlaubt.app.ui.MainScreen
 import de.waserlaubt.app.ui.MainViewModel
 import de.waserlaubt.app.ui.PermissionScreen
+import de.waserlaubt.app.ui.SettingsScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -46,10 +47,18 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 var disclaimerAccepted by rememberSaveable { mutableStateOf(prefs.getBoolean(KEY_DISCLAIMER, false)) }
                 var showDebug by rememberSaveable { mutableStateOf(false) }
+                var showSettings by rememberSaveable { mutableStateOf(false) }
                 val state by viewModel.state.collectAsStateWithLifecycle()
 
-                if (hasPermission) {
-                    MainScreen(state, showDebug, onToggleDebug = { showDebug = !showDebug })
+                if (showSettings) {
+                    val offline by viewModel.offline.state.collectAsStateWithLifecycle()
+                    SettingsScreen(offline, viewModel.offline, onBack = { showSettings = false })
+                } else if (hasPermission) {
+                    MainScreen(
+                        state, showDebug,
+                        onToggleDebug = { showDebug = !showDebug },
+                        onOpenSettings = { showSettings = true },
+                    )
                 } else {
                     PermissionScreen(onRequest = ::requestPermission)
                 }

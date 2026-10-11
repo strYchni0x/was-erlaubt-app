@@ -17,7 +17,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Zum Testen: Pakete vom PC über `adb reverse tcp:8765 tcp:8765` + lokalen HTTP-Server
+            buildConfigField("String", "PACKAGE_BASE_URL", "\"http://127.0.0.1:8765/\"")
+        }
         release {
+            buildConfigField("String", "PACKAGE_BASE_URL", "\"https://example.invalid/waserlaubt/\"")
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
@@ -31,6 +36,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -45,6 +51,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.material.icons.core)
     implementation(libs.kotlinx.coroutines.android)
     debugImplementation(libs.androidx.ui.tooling)
 

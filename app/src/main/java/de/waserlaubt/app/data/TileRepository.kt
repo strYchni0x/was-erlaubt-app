@@ -17,16 +17,25 @@ import kotlin.math.abs
 import kotlin.math.floor
 
 /**
- * Hält Straßendaten in Kacheln von ca. 2,2 × 2 km. Kacheln werden bei Bedarf über Overpass
- * geladen und 30 Tage auf dem Gerät zwischengespeichert. Höchstens zwei Kacheln werden
- * gleichzeitig geladen, um die öffentlichen Overpass-Server zu schonen.
+ * Hält Straßendaten in Kacheln von ca. 2,2 × 2 km. Kacheln kommen aus installierten
+ * Offline-Paketen oder werden bei Bedarf über Overpass geladen und 30 Tage auf dem Gerät
+ * zwischengespeichert. Höchstens zwei Kacheln werden gleichzeitig online geladen, um die
+ * öffentlichen Overpass-Server zu schonen.
  */
 class TileRepository(
     private val client: OverpassClient,
     private val cacheDir: File,
     private val scope: CoroutineScope,
+    private val offlineSource: OfflineSource? = null,
 ) {
     data class TileKey(val y: Int, val x: Int)
+
+    /** Wege einer Kachel aus einem Offline-Paket; [complete] = ganz im Gebiet des Pakets. */
+    class OfflineTile(val ways: List<OsmWay>, val complete: Boolean)
+
+    fun interface OfflineSource {
+        fun tile(y: Int, x: Int): OfflineTile?
+    }
 
     data class Status(val loading: Int = 0, val loaded: Int = 0, val error: String? = null)
 
@@ -34,6 +43,8 @@ class TileRepository(
     private val inFlight = ConcurrentHashMap.newKeySet<TileKey>()
     private val failedAt = ConcurrentHashMap<TileKey, Long>()
     private val failures = ConcurrentHashMap<TileKey, Int>()
+    /** Kacheln, die nur teilweise aus einem Offline-Paket stammen. */
+    private val partial = ConcurrentHashMap.newKeySet<TileKey>()
     private val fetchSlots = Semaphore(MAX_PARALLEL)
 
     @Volatile private var center = TileKey(0, 0)
@@ -51,6 +62,7 @@ class TileRepository(
         this.center = center
         // Weit entfernte Kacheln aus dem Speicher werfen (bleiben im Datei-Cache)
         tiles.keys.removeAll { !isNear(it, center) }
+        partial.removeAll { !isNear(it, center) }
         // Reihenfolge = Priorität: eigene Kachel, dann in Fahrtrichtung, dann seitliche Ränder
         val keys = linkedSetOf(center)
         if (bearingDeg != null) {
@@ -73,49 +85,61 @@ class TileRepository(
     fun isLoaded(p: LatLon): Boolean = tiles.containsKey(keyOf(p))
 
     private fun ensure(key: TileKey) {
-        if (tiles.containsKey(key) || !inFlight.add(key)) return
-        val failed = failedAt[key]
-        if (failed != null && System.currentTimeMillis() - failed < retryDelay(key)) {
-            inFlight.remove(key)
-            return
-        }
-        // Frischer Cache → sofort, ohne auf das Netz zu warten
-        readCache(key, maxAgeMs = CACHE_MAX_AGE_MS)?.let {
-            tiles[key] = it
-            inFlight.remove(key)
-            publish()
-            return
-        }
+        if ((tiles.containsKey(key) && key !in partial) || !inFlight.add(key)) return
         publish()
         scope.launch(Dispatchers.IO) {
-            fetchSlots.withPermit {
-                // Inzwischen vorbeigefahren → nicht mehr laden
-                if (!isNear(key, center)) {
-                    inFlight.remove(key)
-                    publish()
-                    return@withPermit
-                }
-                try {
-                    val (s, w, n, e) = bounds(key)
-                    val raw = client.fetchRaw(s, w, n, e)
-                    val ways = OverpassClient.parse(raw)
-                    cacheFile(key).writeText(raw)
-                    Log.i(TAG, "Kachel $key geladen: ${ways.size} Straßen")
-                    tiles[key] = ways
-                    failedAt.remove(key)
-                    failures.remove(key)
-                    _status.value = _status.value.copy(error = null)
-                } catch (e: Exception) {
-                    Log.w(TAG, "Kachel $key fehlgeschlagen", e)
-                    failedAt[key] = System.currentTimeMillis()
-                    failures.merge(key, 1, Int::plus)
-                    // Notfalls veraltete Daten nehmen
-                    readCache(key, maxAgeMs = Long.MAX_VALUE)?.let { tiles[key] = it }
-                    _status.value = _status.value.copy(error = e.message ?: e.javaClass.simpleName)
-                } finally {
-                    inFlight.remove(key)
-                    publish()
-                }
+            try {
+                load(key)
+            } finally {
+                inFlight.remove(key)
+                publish()
+            }
+        }
+    }
+
+    private suspend fun load(key: TileKey) {
+        // 1. Offline-Paket: sofort und ohne Netz
+        val offline = runCatching { offlineSource?.tile(key.y, key.x) }.getOrNull()
+        if (offline != null) {
+            tiles[key] = offline.ways
+            Log.i(TAG, "Kachel $key offline: ${offline.ways.size} Straßen${if (offline.complete) "" else " (Rand)"}")
+            if (offline.complete) {
+                partial.remove(key)
+                return
+            }
+            // Kachel am Rand des Pakets: Rest der Kachel online ergänzen
+            partial += key
+        }
+        // 2. Frischer Online-Cache
+        readCache(key, maxAgeMs = CACHE_MAX_AGE_MS)?.let {
+            tiles[key] = it
+            partial.remove(key)
+            return
+        }
+        // 3. Overpass
+        val failed = failedAt[key]
+        if (failed != null && System.currentTimeMillis() - failed < retryDelay(key)) return
+        fetchSlots.withPermit {
+            // Inzwischen vorbeigefahren → nicht mehr laden
+            if (!isNear(key, center)) return
+            try {
+                val (s, w, n, e) = bounds(key)
+                val raw = client.fetchRaw(s, w, n, e)
+                val ways = OverpassClient.parse(raw)
+                cacheFile(key).writeText(raw)
+                Log.i(TAG, "Kachel $key geladen: ${ways.size} Straßen")
+                tiles[key] = ways
+                partial.remove(key)
+                failedAt.remove(key)
+                failures.remove(key)
+                _status.value = _status.value.copy(error = null)
+            } catch (e: Exception) {
+                Log.w(TAG, "Kachel $key fehlgeschlagen", e)
+                failedAt[key] = System.currentTimeMillis()
+                failures.merge(key, 1, Int::plus)
+                // Notfalls veraltete Daten nehmen (aber keine Teilkachel aus dem Paket überschreiben)
+                if (key !in partial) readCache(key, maxAgeMs = Long.MAX_VALUE)?.let { tiles[key] = it }
+                if (!tiles.containsKey(key)) _status.value = _status.value.copy(error = e.message ?: e.javaClass.simpleName)
             }
         }
     }

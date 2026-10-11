@@ -13,7 +13,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,6 +26,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
@@ -32,7 +40,7 @@ private val Warn = Color(0xFFFF5252)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MainScreen(state: UiState, showDebug: Boolean, onToggleDebug: () -> Unit) {
+fun MainScreen(state: UiState, showDebug: Boolean, onToggleDebug: () -> Unit, onOpenSettings: () -> Unit) {
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
@@ -47,15 +55,18 @@ fun MainScreen(state: UiState, showDebug: Boolean, onToggleDebug: () -> Unit) {
             Row(Modifier.fillMaxSize().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly) {
                 SignArea(state, signSize)
-                InfoArea(state, showDebug, Modifier.weight(1f))
+                InfoArea(state, showDebug, signSize, Modifier.weight(1f))
             }
         } else {
             Column(Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center) {
                 SignArea(state, signSize)
                 Spacer(Modifier.height(24.dp))
-                InfoArea(state, showDebug, Modifier)
+                InfoArea(state, showDebug, signSize, Modifier)
             }
+        }
+        IconButton(onClick = onOpenSettings, modifier = Modifier.align(Alignment.TopEnd)) {
+            Icon(Icons.Outlined.Settings, contentDescription = "Optionen", tint = Color(0xFF606060))
         }
         Text(
             "Daten © OpenStreetMap-Mitwirkende",
@@ -66,7 +77,7 @@ fun MainScreen(state: UiState, showDebug: Boolean, onToggleDebug: () -> Unit) {
 }
 
 @Composable
-private fun SignArea(state: UiState, signSize: androidx.compose.ui.unit.Dp) {
+private fun SignArea(state: UiState, signSize: Dp) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         val limit = state.limit
         SpeedSign(limit?.value ?: SpeedValue.Unknown, signSize, dimmed = limit == null || limit.estimated)
@@ -81,7 +92,7 @@ private fun SignArea(state: UiState, signSize: androidx.compose.ui.unit.Dp) {
 }
 
 @Composable
-private fun InfoArea(state: UiState, showDebug: Boolean, modifier: Modifier) {
+private fun InfoArea(state: UiState, showDebug: Boolean, signSize: Dp, modifier: Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         state.limit?.note?.let {
             Text(it, color = Color.White, fontSize = 20.sp, textAlign = TextAlign.Center)
@@ -93,8 +104,16 @@ private fun InfoArea(state: UiState, showDebug: Boolean, modifier: Modifier) {
         state.speedKmh?.let { kmh ->
             val limit = (state.limit?.value as? SpeedValue.Number)?.value
             val tooFast = limit != null && state.limit?.estimated == false && kmh > limit + 3
-            Text("$kmh km/h", color = if (tooFast) Warn else Muted, fontSize = 28.sp,
-                fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+            // Eigene Geschwindigkeit wächst mit dem Schild: auf dem Handy ca. 60 sp statt 28 sp
+            val size = (signSize.value * 0.17f).coerceIn(28f, 96f)
+            Text(
+                buildAnnotatedString {
+                    append("$kmh")
+                    withStyle(SpanStyle(fontSize = (size * 0.45f).sp, fontWeight = FontWeight.Medium)) { append(" km/h") }
+                },
+                color = if (tooFast) Warn else Muted, fontSize = size.sp,
+                fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp),
+            )
         }
         statusText(state)?.let {
             Text(it, color = Muted, fontSize = 16.sp, textAlign = TextAlign.Center,
