@@ -55,3 +55,14 @@ Build-Ausgabe liegt unter `D:/build/waserlaubt/` (siehe `settings.gradle.kts`).
 
 - Testfahrten mit Debug-Overlay, Matching-Parameter justieren
 - Tools liegen doppelt (hier und in was-erlaubt-daten) – Paketformat bei Änderungen in beiden anpassen
+
+## Lizenz
+
+Copyright © 2026 Florian Willnat
+
+Dieses Programm ist freie Software: Sie können es unter den Bedingungen der
+[GNU General Public License](LICENSE), Version 3 oder (nach Ihrer Wahl) jeder späteren
+Version, weitergeben und/oder ändern. Es wird ohne jede Gewährleistung bereitgestellt.
+
+Straßendaten © OpenStreetMap-Mitwirkende, [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/)
+(gilt auch für die Testdaten in `app/src/test/resources`).
