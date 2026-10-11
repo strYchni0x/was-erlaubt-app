@@ -84,4 +84,18 @@ class MaxspeedResolverTest {
         assertEquals(SpeedValue.Number(50), resolve(*tags, forward = true).value)
         assertEquals(SpeedValue.Number(30), resolve(*tags, forward = false).value)
     }
+
+    @Test fun estimatesRuralAndUrbanRoads() {
+        fun est(builtUp: Boolean, vararg tags: Pair<String, String>) =
+            MaxspeedResolver.resolve(mapOf(*tags), true, wedMorning, builtUp)
+        // B 51 bei Stemwede: primary ohne maxspeed
+        val rural = est(false, "highway" to "primary", "lanes" to "2")
+        assertEquals(SpeedValue.Number(100), rural.value)
+        assertTrue(rural.estimated)
+        assertEquals(SpeedValue.Number(50), est(true, "highway" to "primary").value)
+        // B 51 bei Ostercappeln: Kraftfahrstraße mit getrennten Fahrbahnen, Streckenverbote aufgehoben
+        assertEquals(SpeedValue.None, est(false, "highway" to "trunk", "motorroad" to "yes", "oneway" to "yes").value)
+        assertEquals(SpeedValue.Number(100), est(false, "highway" to "trunk", "motorroad" to "yes", "lanes" to "2").value)
+        assertEquals(SpeedValue.Number(70), est(false, "highway" to "trunk", "maxspeed" to "70").value)
+    }
 }

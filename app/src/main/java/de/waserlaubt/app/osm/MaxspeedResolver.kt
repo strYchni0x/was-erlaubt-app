@@ -10,7 +10,16 @@ import java.time.LocalDateTime
  */
 object MaxspeedResolver {
 
-    fun resolve(tags: Map<String, String>, forward: Boolean, now: LocalDateTime): SpeedLimit {
+    /**
+     * @param builtUp ob die Straße vermutlich innerorts liegt; null = unbekannt, dann wird für
+     *   Landstraßen ohne Tag nicht geschätzt.
+     */
+    fun resolve(
+        tags: Map<String, String>,
+        forward: Boolean,
+        now: LocalDateTime,
+        builtUp: Boolean? = null,
+    ): SpeedLimit {
         val dir = if (forward) "forward" else "backward"
         var note: String? = null
 
@@ -43,14 +52,32 @@ object MaxspeedResolver {
         }
 
         // 4. Schätzung aus dem Straßentyp (Annahme: deutsche Regeln)
-        val estimate = when (tags["highway"]) {
-            "motorway" -> SpeedValue.None
-            "living_street" -> SpeedValue.Walk
-            "residential" -> SpeedValue.Number(50)
-            else -> null
-        }
+        val estimate = estimate(tags, builtUp)
         return if (estimate != null) SpeedLimit(estimate, estimated = true, note = note)
         else SpeedLimit(SpeedValue.Unknown, note = note)
+    }
+
+    private val openRoads = setOf(
+        "trunk", "trunk_link", "primary", "primary_link", "secondary", "secondary_link",
+        "tertiary", "tertiary_link", "unclassified", "road",
+    )
+
+    /**
+     * Allgemeine Tempolimits nach StVO § 3: innerorts 50, außerorts 100, ohne Limit auf
+     * Autobahnen und außerorts auf Straßen mit getrennten Fahrbahnen (Kraftfahrstraßen).
+     */
+    private fun estimate(tags: Map<String, String>, builtUp: Boolean?): SpeedValue? {
+        val highway = tags["highway"]
+        val separated = tags["oneway"] == "yes" || (tags["lanes"]?.toIntOrNull() ?: 0) >= 4
+        return when {
+            highway == "motorway" -> SpeedValue.None
+            highway == "living_street" -> SpeedValue.Walk
+            highway == "residential" -> SpeedValue.Number(50)
+            highway !in openRoads || builtUp == null -> null
+            builtUp -> SpeedValue.Number(50)
+            separated && (tags["motorroad"] == "yes" || highway == "trunk") -> SpeedValue.None
+            else -> SpeedValue.Number(100)
+        }
     }
 
     private val numberRegex = Regex("^(\\d{1,3})\\s*(mph|km/h|kmh|kph)?$")

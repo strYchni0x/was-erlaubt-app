@@ -14,7 +14,12 @@ class OverpassClient(private val userAgent: String) {
     private val endpoints = listOf(
         "https://overpass-api.de/api/interpreter",
         "https://overpass.private.coffee/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     )
+
+    /** Zuletzt erfolgreicher Server wird zuerst gefragt. */
+    @Volatile private var preferred = 0
 
     /** Lädt die Rohdaten (JSON) für eine Bounding-Box; probiert nacheinander alle Server. */
     fun fetchRaw(south: Double, west: Double, north: Double, east: Double): String {
@@ -23,9 +28,10 @@ class OverpassClient(private val userAgent: String) {
             "out tags geom;"
         val body = "data=" + URLEncoder.encode(query, "UTF-8")
         var lastError: Exception? = null
-        for (endpoint in endpoints) {
+        for (i in endpoints.indices) {
+            val index = (preferred + i) % endpoints.size
             try {
-                return post(endpoint, body)
+                return post(endpoints[index], body).also { preferred = index }
             } catch (e: Exception) {
                 lastError = e
             }
@@ -37,7 +43,7 @@ class OverpassClient(private val userAgent: String) {
         val conn = URL(endpoint).openConnection() as HttpURLConnection
         try {
             conn.requestMethod = "POST"
-            conn.connectTimeout = 10_000
+            conn.connectTimeout = 8_000
             conn.readTimeout = 30_000
             conn.doOutput = true
             conn.setRequestProperty("User-Agent", userAgent)

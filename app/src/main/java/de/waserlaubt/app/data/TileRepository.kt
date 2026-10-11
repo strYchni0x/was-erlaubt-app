@@ -8,8 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import android.util.Log
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -18,8 +18,8 @@ import kotlin.math.floor
 
 /**
  * Hält Straßendaten in Kacheln von ca. 2,2 × 2 km. Kacheln werden bei Bedarf über Overpass
- * geladen und eine Woche auf dem Gerät zwischengespeichert. Geladen wird immer nur eine
- * Kachel gleichzeitig, um die öffentlichen Overpass-Server zu schonen.
+ * geladen und 30 Tage auf dem Gerät zwischengespeichert. Höchstens zwei Kacheln werden
+ * gleichzeitig geladen, um die öffentlichen Overpass-Server zu schonen.
  */
 class TileRepository(
     private val client: OverpassClient,
@@ -33,7 +33,10 @@ class TileRepository(
     private val tiles = ConcurrentHashMap<TileKey, List<OsmWay>>()
     private val inFlight = ConcurrentHashMap.newKeySet<TileKey>()
     private val failedAt = ConcurrentHashMap<TileKey, Long>()
-    private val fetchMutex = Mutex()
+    private val failures = ConcurrentHashMap<TileKey, Int>()
+    private val fetchSlots = Semaphore(MAX_PARALLEL)
+
+    @Volatile private var center = TileKey(0, 0)
 
     private val _status = MutableStateFlow(Status())
     val status: StateFlow<Status> = _status
@@ -45,14 +48,15 @@ class TileRepository(
     /** Sorgt dafür, dass die Kacheln rund um die Position und in Fahrtrichtung vorhanden sind. */
     fun ensureAround(p: LatLon, bearingDeg: Double?) {
         val center = keyOf(p)
+        this.center = center
         // Weit entfernte Kacheln aus dem Speicher werfen (bleiben im Datei-Cache)
-        tiles.keys.removeAll { abs(it.y - center.y) > KEEP_RADIUS || abs(it.x - center.x) > KEEP_RADIUS }
+        tiles.keys.removeAll { !isNear(it, center) }
+        // Reihenfolge = Priorität: eigene Kachel, dann in Fahrtrichtung, dann seitliche Ränder
         val keys = linkedSetOf(center)
-        // Kachelrand in der Nähe → Nachbarkachel vorsorglich laden
-        for (b in listOf(0.0, 90.0, 180.0, 270.0)) keys += keyOf(Geo.offset(p, b, EDGE_MARGIN_M))
         if (bearingDeg != null) {
             for (d in LOOKAHEAD_M) keys += keyOf(Geo.offset(p, bearingDeg, d))
         }
+        for (b in listOf(0.0, 90.0, 180.0, 270.0)) keys += keyOf(Geo.offset(p, b, EDGE_MARGIN_M))
         keys.forEach(::ensure)
     }
 
@@ -71,7 +75,7 @@ class TileRepository(
     private fun ensure(key: TileKey) {
         if (tiles.containsKey(key) || !inFlight.add(key)) return
         val failed = failedAt[key]
-        if (failed != null && System.currentTimeMillis() - failed < RETRY_AFTER_MS) {
+        if (failed != null && System.currentTimeMillis() - failed < retryDelay(key)) {
             inFlight.remove(key)
             return
         }
@@ -84,7 +88,13 @@ class TileRepository(
         }
         publish()
         scope.launch(Dispatchers.IO) {
-            fetchMutex.withLock {
+            fetchSlots.withPermit {
+                // Inzwischen vorbeigefahren → nicht mehr laden
+                if (!isNear(key, center)) {
+                    inFlight.remove(key)
+                    publish()
+                    return@withPermit
+                }
                 try {
                     val (s, w, n, e) = bounds(key)
                     val raw = client.fetchRaw(s, w, n, e)
@@ -93,10 +103,12 @@ class TileRepository(
                     Log.i(TAG, "Kachel $key geladen: ${ways.size} Straßen")
                     tiles[key] = ways
                     failedAt.remove(key)
+                    failures.remove(key)
                     _status.value = _status.value.copy(error = null)
                 } catch (e: Exception) {
                     Log.w(TAG, "Kachel $key fehlgeschlagen", e)
                     failedAt[key] = System.currentTimeMillis()
+                    failures.merge(key, 1, Int::plus)
                     // Notfalls veraltete Daten nehmen
                     readCache(key, maxAgeMs = Long.MAX_VALUE)?.let { tiles[key] = it }
                     _status.value = _status.value.copy(error = e.message ?: e.javaClass.simpleName)
@@ -106,6 +118,14 @@ class TileRepository(
                 }
             }
         }
+    }
+
+    private fun isNear(k: TileKey, c: TileKey) = abs(k.y - c.y) <= KEEP_RADIUS && abs(k.x - c.x) <= KEEP_RADIUS
+
+    /** 5 s, 10 s, 20 s, 40 s, dann jede Minute – Funklöcher sind meist kurz. */
+    private fun retryDelay(key: TileKey): Long {
+        val n = (failures[key] ?: 1).coerceIn(1, 5)
+        return (RETRY_BASE_MS shl (n - 1)).coerceAtMost(RETRY_MAX_MS)
     }
 
     private fun publish() {
@@ -137,9 +157,12 @@ class TileRepository(
         private const val TILE_LAT = 0.02
         private const val TILE_LON = 0.03
         private const val EDGE_MARGIN_M = 300.0
-        private const val KEEP_RADIUS = 2
-        private val LOOKAHEAD_M = listOf(600.0, 1200.0)
-        private const val CACHE_MAX_AGE_MS = 7L * 24 * 3600 * 1000
-        private const val RETRY_AFTER_MS = 30_000L
+        private const val KEEP_RADIUS = 3
+        private const val MAX_PARALLEL = 2
+        // Bei 100 km/h reichen 4,5 km für knapp drei Minuten
+        private val LOOKAHEAD_M = listOf(500.0, 1500.0, 3000.0, 4500.0)
+        private const val CACHE_MAX_AGE_MS = 30L * 24 * 3600 * 1000
+        private const val RETRY_BASE_MS = 5_000L
+        private const val RETRY_MAX_MS = 60_000L
     }
 }

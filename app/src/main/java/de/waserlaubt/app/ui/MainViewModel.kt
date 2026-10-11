@@ -14,6 +14,7 @@ import de.waserlaubt.app.data.OverpassClient
 import de.waserlaubt.app.data.TileRepository
 import de.waserlaubt.app.matching.Fix
 import de.waserlaubt.app.matching.RoadMatcher
+import de.waserlaubt.app.osm.BuiltUp
 import de.waserlaubt.app.osm.LatLon
 import de.waserlaubt.app.osm.MaxspeedResolver
 import de.waserlaubt.app.osm.SpeedLimit
@@ -140,7 +141,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         val fix = Fix(pos, bearing, speed, location.accuracy.toDouble())
-        val match = matcher.update(fix, tiles.waysNear(pos))
+        val nearby = tiles.waysNear(pos)
+        val match = matcher.update(fix, nearby)
         if (match == null) {
             missedMatches++
             _state.update {
@@ -156,13 +158,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         missedMatches = 0
-        val limit = MaxspeedResolver.resolve(match.way.tags, match.forward, LocalDateTime.now())
+        val builtUp = BuiltUp.estimate(pos, nearby)
+        val limit = MaxspeedResolver.resolve(match.way.tags, match.forward, LocalDateTime.now(), builtUp)
         val debug = buildString {
             append("way ${match.way.id} · ${match.way.highway} · ")
             append(if (match.forward) "vorwärts" else "rückwärts")
             append(" · ${match.distanceM.toInt()} m · ±${location.accuracy.toInt()} m")
             bearing?.let { append(" · Kurs ${it.toInt()}°") }
-            match.way.tags.filterKeys { "maxspeed" in it || it.startsWith("zone:") || it == "oneway" }
+            append(if (builtUp) " · innerorts?" else " · außerorts?")
+            match.way.tags.filterKeys { "maxspeed" in it || it.startsWith("zone:") || it in DEBUG_TAGS }
                 .forEach { (k, v) -> append("\n$k=$v") }
         }
         _state.update {
@@ -181,5 +185,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val TAG = "MainViewModel"
         private const val GPS_LOST_MS = 8_000L
         private const val MAX_ACCURACY_M = 40f
+        private val DEBUG_TAGS = setOf("oneway", "motorroad", "lanes")
     }
 }

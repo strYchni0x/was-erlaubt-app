@@ -6,12 +6,14 @@ Datenquelle: OpenStreetMap (Overpass-API). Kein Konto, kein Tracking, keine Werb
 ## Funktionsweise
 
 1. GPS-Position + Kurs (1 Hz, `LocationManager`, ohne Google-Dienste)
-2. Straßendaten in Kacheln (~2,2 × 2 km) von Overpass, 7 Tage Cache in `cacheDir/tiles`;
+2. Straßendaten in Kacheln (~2,2 × 2 km) von Overpass, 30 Tage Cache in `cacheDir/tiles`;
    Nachbarkacheln in Fahrtrichtung werden vorgeladen
 3. Map-Matching (`matching/RoadMatcher`): Abstand + Richtungsabweichung, Einbahnstraßen,
    Hysterese (Wechsel erst nach 2 bestätigten Positionen)
 4. Tempolimit (`osm/MaxspeedResolver`): `maxspeed:conditional` → `maxspeed:forward/backward`
    → `maxspeed` → `maxspeed:type`/`zone:maxspeed` (DE/AT/CH/NL/FR) → Schätzung aus Straßentyp
+   (innerorts 50 / außerorts 100 / Kraftfahrstraße mit getrennten Fahrbahnen ohne Limit;
+   „innerorts“ = mind. 3 Wohnstraßen im Umkreis von 150 m)
 
 ## Bedienung
 
