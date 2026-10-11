@@ -43,7 +43,14 @@ private val Dim = Color(0xFF9E9E9E)
 private val ErrorColor = Color(0xFFFF8A80)
 
 @Composable
-fun SettingsScreen(state: OfflineState, store: OfflineStore, onBack: () -> Unit) {
+fun SettingsScreen(
+    state: OfflineState,
+    store: OfflineStore,
+    pipEnabled: Boolean,
+    pipSupported: Boolean,
+    onPipChange: (Boolean) -> Unit,
+    onBack: () -> Unit,
+) {
     BackHandler(onBack = onBack)
     LaunchedEffect(Unit) { store.loadCatalog() }
 
@@ -59,6 +66,23 @@ fun SettingsScreen(state: OfflineState, store: OfflineStore, onBack: () -> Unit)
                 Text("Optionen", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Medium)
             }
             Spacer(Modifier.padding(4.dp))
+            if (pipSupported) {
+                Text("Anzeige", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Kleines Fenster über der Navigation", color = Color.White, fontSize = 16.sp)
+                        Text(
+                            "Beim Wechsel in eine andere App (z. B. Google Maps) läuft „was erlaubt“ als " +
+                                "kleines Fenster weiter. Antippen und vergrößern holt die App zurück, " +
+                                "nach unten wischen beendet sie.",
+                            color = Dim, fontSize = 13.sp,
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Switch(checked = pipEnabled, onCheckedChange = onPipChange)
+                }
+                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = Color(0xFF333333))
+            }
             Text("Offline-Karten", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Medium)
             Text(
                 "Mit einer Offline-Karte braucht die App unterwegs kein Netz. Wo keine installiert ist, " +

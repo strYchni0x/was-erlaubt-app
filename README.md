@@ -38,6 +38,8 @@ Größe: Niedersachsen 21,8 MB, Deutschland etwa 200 MB.
 ## Bedienung
 
 - **Lange drücken** auf den Bildschirm: Debug-Infos (Way-ID, Richtung, Abstand, Tags)
+- **Bild-im-Bild**: Beim Wechsel in eine andere App (z. B. Navigation) läuft die Anzeige als kleines
+  Fenster weiter (abschaltbar in den Optionen)
 - Ausgegrautes Schild = geschätzt (kein Tag in OSM)
 
 ## Build

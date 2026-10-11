@@ -40,7 +40,17 @@ private val Warn = Color(0xFFFF5252)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MainScreen(state: UiState, showDebug: Boolean, onToggleDebug: () -> Unit, onOpenSettings: () -> Unit) {
+fun MainScreen(
+    state: UiState,
+    showDebug: Boolean,
+    onToggleDebug: () -> Unit,
+    onOpenSettings: () -> Unit,
+    compact: Boolean = false,
+) {
+    if (compact) {
+        CompactScreen(state)
+        return
+    }
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
@@ -73,6 +83,25 @@ fun MainScreen(state: UiState, showDebug: Boolean, onToggleDebug: () -> Unit, on
             color = Color(0xFF707070), fontSize = 11.sp,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp),
         )
+    }
+}
+
+/** Bild-im-Bild-Fenster über der Navigation: nur Schild und eigene Geschwindigkeit. */
+@Composable
+private fun CompactScreen(state: UiState) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+        val signSize = min(maxWidth, maxHeight * 0.74f) * 0.92f
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            val limit = state.limit
+            SpeedSign(limit?.value ?: SpeedValue.Unknown, signSize, dimmed = limit == null || limit.estimated)
+            val kmh = state.speedKmh
+            if (kmh != null) {
+                val max = (limit?.value as? SpeedValue.Number)?.value
+                val tooFast = max != null && limit.estimated == false && kmh > max + 3
+                Text("$kmh", color = if (tooFast) Warn else Muted, fontSize = (signSize.value * 0.24f).sp,
+                    fontWeight = FontWeight.Bold, maxLines = 1)
+            }
+        }
     }
 }
 
