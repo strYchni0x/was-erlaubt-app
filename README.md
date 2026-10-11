@@ -29,7 +29,9 @@ python tools/build_all.py D:/build/waserlaubt-data bremen     # einzelne
 ```
 
 `out/` enthält danach `<bundesland>.wepk` und `index.json` zum Hochladen. Die App lädt von
-`PACKAGE_BASE_URL` (siehe `app/build.gradle.kts`); im Debug-Build `http://127.0.0.1:8765/`,
+`PACKAGE_BASE_URL` (siehe `app/build.gradle.kts`): GitHub-Releases von
+[was-erlaubt-daten](https://github.com/strYchni0x/was-erlaubt-daten), dort monatlich per Action gebaut.
+Lokal statt GitHub: URL auf `http://127.0.0.1:8765/` setzen (nur Debug erlaubt Klartext),
 zum Testen: `python -m http.server 8765 --directory out` und `adb reverse tcp:8765 tcp:8765`.
 Größe: Niedersachsen 21,8 MB, Deutschland etwa 200 MB.
 
@@ -50,4 +52,4 @@ Build-Ausgabe liegt unter `D:/build/waserlaubt/` (siehe `settings.gradle.kts`).
 ## Nächste Schritte
 
 - Testfahrten mit Debug-Overlay, Matching-Parameter justieren
-- Hosting der Offline-Pakete + regelmäßige Aktualisierung
+- Tools liegen doppelt (hier und in was-erlaubt-daten) – Paketformat bei Änderungen in beiden anpassen

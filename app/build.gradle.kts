@@ -14,15 +14,17 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+
+        // Offline-Pakete: monatlich gebaut von github.com/strYchni0x/was-erlaubt-daten.
+        // Zum lokalen Testen: "http://127.0.0.1:8765/" + `adb reverse tcp:8765 tcp:8765` (nur Debug erlaubt Klartext)
+        buildConfigField(
+            "String", "PACKAGE_BASE_URL",
+            "\"https://github.com/strYchni0x/was-erlaubt-daten/releases/latest/download/\"",
+        )
     }
 
     buildTypes {
-        debug {
-            // Zum Testen: Pakete vom PC über `adb reverse tcp:8765 tcp:8765` + lokalen HTTP-Server
-            buildConfigField("String", "PACKAGE_BASE_URL", "\"http://127.0.0.1:8765/\"")
-        }
         release {
-            buildConfigField("String", "PACKAGE_BASE_URL", "\"https://example.invalid/waserlaubt/\"")
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

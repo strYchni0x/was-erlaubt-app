@@ -1,11 +1,12 @@
 """
 Lädt Geofabrik-Extrakte der Bundesländer, baut daraus Offline-Pakete und schreibt index.json.
 
-    python tools/build_all.py <arbeitsverzeichnis> [bundesland ...]
+    python tools/build_all.py <arbeitsverzeichnis> [bundesland ...] [--delete-pbf]
 
 Ohne Angabe werden alle 16 Bundesländer gebaut. Das Ausgabeverzeichnis <arbeitsverzeichnis>/out
 enthält danach <id>.wepk und index.json und kann so auf einen Webserver kopiert werden.
-Bereits vorhandene, aktuelle Extrakte werden nicht erneut geladen.
+Bereits vorhandene, aktuelle Extrakte werden nicht erneut geladen; mit --delete-pbf werden sie
+nach dem Bauen gelöscht (spart Platz, z. B. in GitHub Actions).
 """
 import json
 import os
@@ -42,10 +43,12 @@ def fetch(url, path):
 
 
 def main():
-    if len(sys.argv) < 2:
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    delete_pbf = "--delete-pbf" in sys.argv
+    if not args:
         sys.exit(__doc__)
-    work = sys.argv[1]
-    regions = sys.argv[2:] or REGIONS
+    work = args[0]
+    regions = args[1:] or REGIONS
     pbf_dir = os.path.join(work, "pbf")
     out_dir = os.path.join(work, "out")
     os.makedirs(pbf_dir, exist_ok=True)
@@ -57,6 +60,8 @@ def main():
         fetch(BASE + f"{region}-latest.osm.pbf", pbf)
         fetch(BASE + f"{region}.poly", poly)
         build(pbf, poly, os.path.join(out_dir, f"{region}.wepk"))
+        if delete_pbf:
+            os.remove(pbf)
 
     # Katalog aus allen vorhandenen Paketen
     packages = {}
