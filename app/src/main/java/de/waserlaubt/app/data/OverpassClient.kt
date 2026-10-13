@@ -15,7 +15,6 @@ class OverpassClient(private val userAgent: String) {
         "https://overpass-api.de/api/interpreter",
         "https://overpass.private.coffee/api/interpreter",
         "https://overpass.kumi.systems/api/interpreter",
-        "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     )
 
     /** Zuletzt erfolgreicher Server wird zuerst gefragt. */

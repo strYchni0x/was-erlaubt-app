@@ -1,7 +1,14 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+}
+
+// Upload-Schlüssel für den Play Store: keystore.properties + .jks liegen nur lokal (gitignored)
+val keystoreProps = Properties().also { props ->
+    rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { props.load(it) }
 }
 
 android {
@@ -13,7 +20,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
 
         // Offline-Pakete: monatlich gebaut von github.com/strYchni0x/was-erlaubt-daten.
         // Zum lokalen Testen: "http://127.0.0.1:8765/" + `adb reverse tcp:8765 tcp:8765` (nur Debug erlaubt Klartext)
@@ -23,9 +30,26 @@ android {
         )
     }
 
+    signingConfigs {
+        if (keystoreProps.getProperty("storeFile") != null) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            // Eigenes Paket, damit Debug- und Release-Version nebeneinander installiert sein können
+            applicationIdSuffix = ".debug"
+        }
         release {
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

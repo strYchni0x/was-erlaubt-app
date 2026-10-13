@@ -99,6 +99,8 @@ class MainActivity : ComponentActivity() {
             }
         }
         if (!hasPermission) requestPermission()
+        // Screenshots: adb shell am start -n de.waserlaubt.app.debug/de.waserlaubt.app.MainActivity --es demo none
+        if (BuildConfig.DEBUG) intent.getStringExtra("demo")?.let(viewModel::showDemo)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

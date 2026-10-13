@@ -19,6 +19,7 @@ import de.waserlaubt.app.osm.BuiltUp
 import de.waserlaubt.app.osm.LatLon
 import de.waserlaubt.app.osm.MaxspeedResolver
 import de.waserlaubt.app.osm.SpeedLimit
+import de.waserlaubt.app.osm.SpeedValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -94,7 +95,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     @SuppressLint("MissingPermission") // Activity prüft die Berechtigung vorher
+    /** Feste Beispielanzeige für Store-Screenshots (nur Debug-Build), GPS bleibt aus. */
+    private var demo = false
+
+    fun showDemo(name: String) {
+        demo = true
+        stop()
+        val (limit, road, kmh) = when (name) {
+            "estimated" -> Triple(SpeedLimit(SpeedValue.Number(100), estimated = true), "Landstraße", 94)
+            "none" -> Triple(SpeedLimit(SpeedValue.None), "A 1", 128)
+            "fast" -> Triple(SpeedLimit(SpeedValue.Number(50)), "Lange Straße", 58)
+            "walk" -> Triple(SpeedLimit(SpeedValue.Walk), "Marktplatz", 6)
+            "conditional" -> Triple(SpeedLimit(SpeedValue.Number(30), conditionalActive = true), "Schulstraße", 28)
+            else -> Triple(SpeedLimit(SpeedValue.Number(70)), "Bremer Straße", 68)
+        }
+        _state.value = UiState(limit = limit, roadName = road, speedKmh = kmh, gps = GpsState.OK)
+    }
+
     fun start() {
+        if (demo) return
         val lm = locationManager ?: return
         if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, gpsListener, Looper.getMainLooper())
