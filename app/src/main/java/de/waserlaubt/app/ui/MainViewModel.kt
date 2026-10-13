@@ -105,6 +105,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             "estimated" -> Triple(SpeedLimit(SpeedValue.Number(100), estimated = true), "Landstraße", 94)
             "none" -> Triple(SpeedLimit(SpeedValue.None), "A 1", 128)
             "fast" -> Triple(SpeedLimit(SpeedValue.Number(50)), "Lange Straße", 58)
+            "city" -> Triple(SpeedLimit(SpeedValue.Number(50)), "Bremer Straße", 47)
             "walk" -> Triple(SpeedLimit(SpeedValue.Walk), "Marktplatz", 6)
             "conditional" -> Triple(SpeedLimit(SpeedValue.Number(30), conditionalActive = true), "Schulstraße", 28)
             else -> Triple(SpeedLimit(SpeedValue.Number(70)), "Bremer Straße", 68)
