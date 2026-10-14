@@ -20,15 +20,16 @@ Play Console → **Testen und veröffentlichen → Testen → Geschlossener Test
 2. Bei der ersten Veröffentlichung: **Play App-Signatur** bestätigen („Von Google generierten Schlüssel
    verwenden“). Der eigene Upload-Schlüssel bleibt der Schlüssel zum Hochladen.
 3. App-Bundle hochladen: `D:\build\waserlaubt\app\outputs\bundle\release\app-release.aab`
-4. Release-Name: `1.0.0 (1)` (wird automatisch vorgeschlagen)
+4. Release-Name: `1.0.1 (2)` (wird automatisch vorgeschlagen). Liegt im Release-Entwurf noch 1.0.0 (1),
+   diese entfernen und durch 1.0.1 ersetzen.
 5. Versionshinweise:
 
 ```
 <de-DE>
-Erste Version: großes Tempo-Schild passend zur Fahrtrichtung, Offline-Karten je Bundesland, kleines Fenster über der Navigation.
+Erste Version: großes Tempo-Schild passend zur Fahrtrichtung, Offline-Karten je Bundesland (wöchentlich aktualisiert, automatischer Download im WLAN), kleines Fenster über der Navigation.
 </de-DE>
 <en-US>
-First release: large speed limit sign for your direction of travel, offline maps per German state, picture-in-picture window over your navigation app.
+First release: large speed limit sign for your direction of travel, offline maps per German state (updated weekly, downloaded automatically on Wi-Fi), picture-in-picture window over your navigation app.
 </en-US>
 ```
 

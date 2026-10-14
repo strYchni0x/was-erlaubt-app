@@ -16,7 +16,7 @@ Reihenfolge, in der die Play Console die Angaben verlangt. Jede Datei entspricht
 
 | Was | Pfad |
 |---|---|
-| App-Bundle (AAB) 1.0.0 | `D:\build\waserlaubt\app\outputs\bundle\release\app-release.aab` |
+| App-Bundle (AAB) 1.0.1 | `D:\build\waserlaubt\app\outputs\bundle\release\app-release.aab` |
 | Store-Icon 512 × 512 | `play/graphics/icon-512.png` |
 | Titelgrafik 1024 × 500 | `play/graphics/feature-graphic-1024x500.png` |
 | Screenshots (1260 × 2520) | `play/screenshots/` |
@@ -27,7 +27,7 @@ Reihenfolge, in der die Play Console die Angaben verlangt. Jede Datei entspricht
 | | |
 |---|---|
 | Paketname | `de.waserlaubt.app` (nicht mehr änderbar) |
-| Version | 1.0.0 (versionCode 1) |
+| Version | 1.0.1 (versionCode 2) – 1.0.0 (versionCode 1) ist bereits hochgeladen und damit verbraucht |
 | Ziel-SDK | 36 (Android 16) · min. SDK 26 (Android 8.0) |
 | Berechtigungen | Standort genau/ungefähr (nur Vordergrund), Internet |
 | Upload-Schlüssel | `waserlaubt-upload.jks` + `keystore.properties` im Projektordner – **gesichert?** |

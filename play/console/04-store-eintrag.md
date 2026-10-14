@@ -31,7 +31,7 @@ WAS DIE APP KANN
 • Zeitabhängige Limits, etwa nachts 30 oder werktags 7–17 Uhr
 • Deine eigene Geschwindigkeit – rot, wenn du zu schnell bist
 • Kleines Fenster über deiner Navigations-App (Bild-im-Bild)
-• Offline-Karten für jedes Bundesland oder ganz Deutschland (ca. 200 MB), monatlich aktualisiert
+• Offline-Karten für jedes Bundesland oder ganz Deutschland (ca. 200 MB), wöchentlich aktualisiert
 • Wo nichts erfasst ist, schätzt die App das allgemeine Limit (innerorts 50, außerorts 100) und zeigt es ausgegraut an
 
 DATENSCHUTZ
@@ -75,7 +75,7 @@ FEATURES
 • Time-dependent limits (e.g. 30 at night)
 • Your own speed – red when you are too fast
 • Small picture-in-picture window on top of your navigation app
-• Offline maps for every German federal state or all of Germany (approx. 200 MB), updated monthly
+• Offline maps for every German federal state or all of Germany (approx. 200 MB), updated weekly
 • Where no limit is mapped, the app estimates the general German limit and shows it greyed out
 
 PRIVACY

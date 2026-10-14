@@ -93,6 +93,18 @@ fun SettingsScreen(
                 Text("Nur über WLAN herunterladen", color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
                 Switch(checked = state.wifiOnly, onCheckedChange = store::setWifiOnly)
             }
+            Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Automatisch aktualisieren", color = Color.White, fontSize = 16.sp)
+                    Text(
+                        "Die Karten werden wöchentlich aus OpenStreetMap neu erstellt. Neue Stände " +
+                            "installierter Bundesländer lädt die App beim Start von selbst.",
+                        color = Dim, fontSize = 13.sp,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Switch(checked = state.autoUpdate, onCheckedChange = store::setAutoUpdate)
+            }
             when {
                 state.catalogLoading -> Text("Paketliste wird geladen …", color = Dim, fontSize = 14.sp)
                 state.catalogError != null -> Row(verticalAlignment = Alignment.CenterVertically) {

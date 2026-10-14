@@ -18,7 +18,7 @@ import kotlin.math.floor
 
 /**
  * Hält Straßendaten in Kacheln von ca. 2,2 × 2 km. Kacheln kommen aus installierten
- * Offline-Paketen oder werden bei Bedarf über Overpass geladen und 30 Tage auf dem Gerät
+ * Offline-Paketen oder werden bei Bedarf über Overpass geladen und 7 Tage auf dem Gerät
  * zwischengespeichert. Höchstens zwei Kacheln werden gleichzeitig online geladen, um die
  * öffentlichen Overpass-Server zu schonen.
  */
@@ -185,7 +185,7 @@ class TileRepository(
         private const val MAX_PARALLEL = 2
         // Bei 100 km/h reichen 4,5 km für knapp drei Minuten
         private val LOOKAHEAD_M = listOf(500.0, 1500.0, 3000.0, 4500.0)
-        private const val CACHE_MAX_AGE_MS = 30L * 24 * 3600 * 1000
+        private const val CACHE_MAX_AGE_MS = 7L * 24 * 3600 * 1000
         private const val RETRY_BASE_MS = 5_000L
         private const val RETRY_MAX_MS = 60_000L
     }

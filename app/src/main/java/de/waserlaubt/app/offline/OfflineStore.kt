@@ -65,6 +65,7 @@ data class OfflineState(
     val catalogLoading: Boolean = false,
     val catalogError: String? = null,
     val wifiOnly: Boolean = true,
+    val autoUpdate: Boolean = true,
 )
 
 /**
@@ -80,7 +81,12 @@ class OfflineStore(context: Context, private val scope: CoroutineScope) : TileRe
     private val downloadDir get() = File(app.getExternalFilesDir(null) ?: app.filesDir, "downloads")
 
     private val readers = ConcurrentHashMap<String, PackageReader>()
-    private val _state = MutableStateFlow(OfflineState(wifiOnly = prefs.getBoolean(KEY_WIFI_ONLY, true)))
+    private val _state = MutableStateFlow(
+        OfflineState(
+            wifiOnly = prefs.getBoolean(KEY_WIFI_ONLY, true),
+            autoUpdate = prefs.getBoolean(KEY_AUTO_UPDATE, true),
+        ),
+    )
     val state: StateFlow<OfflineState> = _state
     private var poller: Job? = null
     /** Pakete werden im Hintergrund geöffnet; Kachelanfragen warten so lange. */
@@ -95,6 +101,7 @@ class OfflineStore(context: Context, private val scope: CoroutineScope) : TileRe
             }
             publishInstalled()
             if (pendingDownloads().isNotEmpty()) startPolling()
+            if (_state.value.autoUpdate) checkForUpdates()
         }
     }
 
@@ -116,7 +123,7 @@ class OfflineStore(context: Context, private val scope: CoroutineScope) : TileRe
 
     // --- Bedienung aus den Optionen ---
 
-    fun loadCatalog() {
+    fun loadCatalog(onLoaded: (() -> Unit)? = null) {
         if (_state.value.catalogLoading) return
         _state.update { it.copy(catalogLoading = true, catalogError = null) }
         scope.launch(Dispatchers.IO) {
@@ -129,11 +136,36 @@ class OfflineStore(context: Context, private val scope: CoroutineScope) : TileRe
                         r.copy(remote = p?.let { RemotePackage(it.getLong("size"), it.getString("date")) })
                     })
                 }
+                onLoaded?.invoke()
             } catch (e: Exception) {
                 Log.w(TAG, "Katalog nicht ladbar", e)
                 _state.update { it.copy(catalogLoading = false, catalogError = "Paketliste nicht erreichbar") }
             }
         }
+    }
+
+    /**
+     * Neue Stände installierter Pakete laden – höchstens alle 6 Stunden geprüft. Der Downloadmanager
+     * wartet bei „Nur über WLAN“ von selbst auf ein WLAN.
+     */
+    private fun checkForUpdates() {
+        if (readers.isEmpty()) return
+        val now = System.currentTimeMillis()
+        if (now - prefs.getLong(KEY_LAST_CHECK, 0) < CHECK_INTERVAL_MS) return
+        loadCatalog {
+            prefs.edit().putLong(KEY_LAST_CHECK, now).apply()
+            val outdated = _state.value.regions.filter { it.updateAvailable && it.progress == null }
+            if (outdated.isNotEmpty()) {
+                Log.i(TAG, "Automatische Aktualisierung: ${outdated.joinToString { it.region.id }}")
+                download(outdated.map { it.region.id })
+            }
+        }
+    }
+
+    fun setAutoUpdate(value: Boolean) {
+        prefs.edit().putBoolean(KEY_AUTO_UPDATE, value).apply()
+        _state.update { it.copy(autoUpdate = value) }
+        if (value) checkForUpdates()
     }
 
     fun setWifiOnly(value: Boolean) {
@@ -282,6 +314,9 @@ class OfflineStore(context: Context, private val scope: CoroutineScope) : TileRe
     companion object {
         private const val TAG = "OfflineStore"
         private const val KEY_WIFI_ONLY = "wifi_only"
+        private const val KEY_AUTO_UPDATE = "auto_update"
+        private const val KEY_LAST_CHECK = "last_update_check"
+        private const val CHECK_INTERVAL_MS = 6 * 3600 * 1000L
         private const val KEY_DL = "download_"
         private const val TILE_LAT_E6 = 20_000
         private const val TILE_LON_E6 = 30_000

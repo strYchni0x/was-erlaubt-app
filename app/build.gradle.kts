@@ -19,8 +19,8 @@ android {
         applicationId = "de.waserlaubt.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         // Offline-Pakete: monatlich gebaut von github.com/strYchni0x/was-erlaubt-daten.
         // Zum lokalen Testen: "http://127.0.0.1:8765/" + `adb reverse tcp:8765 tcp:8765` (nur Debug erlaubt Klartext)

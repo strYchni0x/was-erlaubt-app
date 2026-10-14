@@ -6,7 +6,7 @@ Datenquelle: OpenStreetMap (Overpass-API). Kein Konto, kein Tracking, keine Werb
 ## Funktionsweise
 
 1. GPS-Position + Kurs (1 Hz, `LocationManager`, ohne Google-Dienste)
-2. Straßendaten in Kacheln (~2,2 × 2 km) von Overpass, 30 Tage Cache in `cacheDir/tiles`;
+2. Straßendaten in Kacheln (~2,2 × 2 km) von Overpass, 7 Tage Cache in `cacheDir/tiles`;
    Nachbarkacheln in Fahrtrichtung werden vorgeladen
 3. Map-Matching (`matching/RoadMatcher`): Abstand + Richtungsabweichung, Einbahnstraßen,
    Hysterese (Wechsel erst nach 2 bestätigten Positionen)
@@ -30,7 +30,7 @@ python tools/build_all.py D:/build/waserlaubt-data bremen     # einzelne
 
 `out/` enthält danach `<bundesland>.wepk` und `index.json` zum Hochladen. Die App lädt von
 `PACKAGE_BASE_URL` (siehe `app/build.gradle.kts`): GitHub-Releases von
-[was-erlaubt-daten](https://github.com/strYchni0x/was-erlaubt-daten), dort monatlich per Action gebaut.
+[was-erlaubt-daten](https://github.com/strYchni0x/was-erlaubt-daten), dort wöchentlich per Action gebaut.
 Lokal statt GitHub: URL auf `http://127.0.0.1:8765/` setzen (nur Debug erlaubt Klartext),
 zum Testen: `python -m http.server 8765 --directory out` und `adb reverse tcp:8765 tcp:8765`.
 Größe: Niedersachsen 21,8 MB, Deutschland etwa 200 MB.
